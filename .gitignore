@@ -1,2 +1,4 @@
 *.png
 spider/
+chrome-data/
+*.pkl
