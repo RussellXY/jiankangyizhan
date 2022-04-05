@@ -26,7 +26,7 @@ capabilities = webdriver.DesiredCapabilities.CHROME
 
 chromedriver = '/usr/local/bin/chromedriver'
 chrome_options = Options()
-chrome_options.add_argument("--user-data-dir=chrome-data")
+#chrome_options.add_argument("--user-data-dir=chrome-data")
 browser=webdriver.Chrome(desired_capabilities=capabilities, options=chrome_options)#需要修改对应browser drive的路径
 loginUrl="https://hk.sz.gov.cn:8118/userPage/login"
 ticketUrl="https://hk.sz.gov.cn:8118/passInfo/detail"
@@ -64,6 +64,10 @@ class TicketGetter:
         from win10toast import ToastNotifier
         toaster = ToastNotifier()
         toaster.show_toast("注意","抢到票了!!!")
+
+    def loginByMyself(self):
+        while browser.current_url==loginUrl:
+            time.sleep(1)
 
     def login(self):
         while browser.current_url==loginUrl:
@@ -199,6 +203,7 @@ class TicketGetter:
             for cookies in self.loginCookies:
                 browser.add_cookie(cookies)
             browser.get(loginUrl)
+            # self.loginByMyself()
             time.sleep(1)
         
         browser.set_page_load_timeout(200)
