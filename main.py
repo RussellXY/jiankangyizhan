@@ -11,25 +11,25 @@ import cv2
 import time
 import os
 import platform
-from urllib.request import Request,urlopen
 import time
 import pickle
 
 capabilities = webdriver.DesiredCapabilities.CHROME
 
-#proxy setting
+# proxy setting
 # prox = Proxy()
 # prox.proxy_type = ProxyType.MANUAL
 # prox.socks_proxy = '127.0.0.1:7891'
 # prox.socks_version = 5
 # prox.add_to_capabilities(capabilities)
 
-chromedriver = '/usr/local/bin/chromedriver'
 chrome_options = Options()
 #chrome_options.add_argument("--user-data-dir=chrome-data")
-browser=webdriver.Chrome(desired_capabilities=capabilities, options=chrome_options)#需要修改对应browser drive的路径
-loginUrl="https://hk.sz.gov.cn:8118/userPage/login"
-ticketUrl="https://hk.sz.gov.cn:8118/passInfo/detail"
+browser = webdriver.Chrome(
+    desired_capabilities=capabilities, options=chrome_options)
+loginUrl = "https://hk.sz.gov.cn:8118/userPage/login"
+ticketUrl = "https://hk.sz.gov.cn:8118/passInfo/detail"
+
 
 class TicketGetter:
 
@@ -38,19 +38,19 @@ class TicketGetter:
 
     def verify(self):
         img_ = browser.find_element_by_id("img_verify")
-        data = img_.screenshot_as_png    #截图的方法是最好的！
-        with open( 'code.png','wb' ) as f:
+        data = img_.screenshot_as_png  # 截图的方法是最好的！
+        with open('code.png', 'wb') as f:
             f.write(data)
 
-        #卷王ocr
+        # 卷王ocr
         ocr = ddddocr.DdddOcr()
         image = cv2.imread("code.png")
         img2 = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         img2 = cv2.inRange(img2, lowerb=110, upperb=255)
-        _,img_bytes=cv2.imencode('.png', img2)
-        img_bytes=img_bytes.tobytes()
+        _, img_bytes = cv2.imencode('.png', img2)
+        img_bytes = img_bytes.tobytes()
         res = ocr.classification(img_bytes)
-        #print(res)
+        # print(res)
         return res
 
     def macNotify(title, subtitle, message):
@@ -63,35 +63,37 @@ class TicketGetter:
         # windows系统通知 pip install win10toast
         from win10toast import ToastNotifier
         toaster = ToastNotifier()
-        toaster.show_toast("注意","抢到票了!!!")
+        toaster.show_toast("注意", "抢到票了!!!")
 
     def loginByMyself(self):
-        while browser.current_url==loginUrl:
+        while browser.current_url == loginUrl:
             time.sleep(1)
 
     def login(self):
-        while browser.current_url==loginUrl:
+        while browser.current_url == loginUrl:
             # 可能有弹出框的话就先去掉弹出框
             try:
                 time.sleep(1)
-                browser.find_element_by_xpath('//button[@type="button" and @onclick="closeLoginHint()"]').click()
+                browser.find_element_by_xpath(
+                    '//button[@type="button" and @onclick="closeLoginHint()"]').click()
             except Exception as error:
                 print(error)
 
             try:
-                accountType=Select(browser.find_element_by_id('select_certificate'))
+                accountType = Select(
+                    browser.find_element_by_id('select_certificate'))
                 accountType.select_by_value('3')
 
-                account=browser.find_element_by_id('input_idCardNo')
+                account = browser.find_element_by_id('input_idCardNo')
                 account.clear()
-                account.send_keys('E05344677')#需要在此输入通行证号码
+                account.send_keys('E05344677')  # 需要在此输入通行证号码
 
-                password=browser.find_element_by_id('input_pwd')
+                password = browser.find_element_by_id('input_pwd')
                 password.clear()
-                password.send_keys('95QmqhCGeCackgRp')#需要在此输入密码
+                password.send_keys('95QmqhCGeCackgRp')  # 需要在此输入密码
 
                 # 自动识别验证码
-                verifyCode=browser.find_element_by_id('input_verifyCode')
+                verifyCode = browser.find_element_by_id('input_verifyCode')
                 verifyCode.clear()
                 verifyCode.send_keys(self.verify())
 
@@ -101,7 +103,7 @@ class TicketGetter:
                     browser.find_element_by_id("img_verify").click()
                     time.sleep(0.5)
                     continue
-                
+
                 self.saveCookies()
             except Exception as error:
                 time.sleep(1)
@@ -129,35 +131,29 @@ class TicketGetter:
             pickle.dump(cookies, fw)
 
     def waitForTicket(self):
-        flag = False
-        while (browser.current_url!=ticketUrl) or flag:
-            if browser.current_url==loginUrl:
+        while True:
+            if browser.current_url == loginUrl:
                 self.login()
 
-            timeArray=time.localtime()
-            jsTime=time.strftime("%Y-%m-%d %H:%M:%S")
-            nowTime=jsTime[11:19]
+            timeArray = time.localtime()
+            jsTime = time.strftime("%Y-%m-%d %H:%M:%S")
+            nowTime = jsTime[11:19]
 
-            if (timeArray.tm_hour >= 10) and (timeArray.tm_hour<20):
+            if (timeArray.tm_hour >= 10) and (timeArray.tm_hour < 20):
                 browser.get(ticketUrl)
-                element=WebDriverWait(browser,120,0.1).until(
-                    EC.presence_of_element_located((By.ID,"divSzArea"))
-                    )
                 try:
                     browser.find_element_by_class_name('orange').click()
-                    flag = False
+                    break
                 except Exception:
-                    time.sleep(0.8)
+                    time.sleep(2)
                     print("当前无票，正在刷票...")
-                    flag = True
             else:
                 print("{} 还未到抢票时间".format(nowTime))
                 time.sleep(0.5)
 
-
     def notifyAndWait(self):
-        #预定确认页面验证码自动填写和提交
-        try:    
+        # 预定确认页面验证码自动填写和提交
+        try:
             # browser.get_screenshot_as_file('spider/screenshot.png')
             # element = browser.find_element_by_id('img_verify')
             # left = int(element.location['x'])
@@ -189,7 +185,7 @@ class TicketGetter:
         except Exception as error:
             print(error)
         finally:
-            while 1==1:
+            while True:
                 time.sleep(5)
                 print('抢到票了')
 
@@ -204,13 +200,18 @@ class TicketGetter:
                 browser.add_cookie(cookies)
             browser.get(loginUrl)
             # self.loginByMyself()
-            time.sleep(1)
-        
+            time.sleep(0.5)
+
         browser.set_page_load_timeout(200)
         browser.set_script_timeout(200)
         self.waitForTicket()
         self.notifyAndWait()
 
+
 if __name__ == '__main__':
-    getter = TicketGetter()
-    getter.run()
+    while True:
+        try:
+            getter = TicketGetter()
+            getter.run()
+        except Exception as error:
+            print(error)
