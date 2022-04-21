@@ -86,11 +86,11 @@ class TicketGetter:
 
                 account = browser.find_element_by_id('input_idCardNo')
                 account.clear()
-                account.send_keys('E05344677')  # 需要在此输入通行证号码
+                account.send_keys('')  # 需要在此输入通行证号码
 
                 password = browser.find_element_by_id('input_pwd')
                 password.clear()
-                password.send_keys('95QmqhCGeCackgRp')  # 需要在此输入密码
+                password.send_keys('')  # 需要在此输入密码
 
                 # 自动识别验证码
                 verifyCode = browser.find_element_by_id('input_verifyCode')
