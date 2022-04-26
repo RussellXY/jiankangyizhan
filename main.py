@@ -25,16 +25,24 @@ capabilities = webdriver.DesiredCapabilities.CHROME
 
 chrome_options = Options()
 #chrome_options.add_argument("--user-data-dir=chrome-data")
+#chrome_options.add_argument("--save-page-as-mhtml")
 browser = webdriver.Chrome(
-    desired_capabilities=capabilities, options=chrome_options)
+desired_capabilities=capabilities, options=chrome_options)
 loginUrl = "https://hk.sz.gov.cn:8118/userPage/login"
 ticketUrl = "https://hk.sz.gov.cn:8118/passInfo/detail"
-
+host = "https://hk.sz.gov.cn:8118"
 
 class TicketGetter:
 
     def __init__(self):
         self.loginCookies = []
+    
+    def saveCurrentHtml(self, name):
+        try:
+            with open('{}.html'.format(name), 'wb') as f:   # 根据5楼的评论，添加newline=''
+                f.write(browser.page_source.encode('utf-8'))
+        except Exception as error:
+            print(error)
 
     def verify(self):
         img_ = browser.find_element_by_id("img_verify")
@@ -53,13 +61,13 @@ class TicketGetter:
         # print(res)
         return res
 
-    def macNotify(title, subtitle, message):
+    def macNotify(self, title, subtitle, message):
         t = '-title {!r}'.format(title)
         s = '-subtitle {!r}'.format(subtitle)
         m = '-message {!r}'.format(message)
         os.system('terminal-notifier {}'.format(' '.join([m, t, s])))
 
-    def windowsNotify(title, message):
+    def windowsNotify(self, title, message):
         # windows系统通知 pip install win10toast
         from win10toast import ToastNotifier
         toaster = ToastNotifier()
@@ -107,6 +115,8 @@ class TicketGetter:
                 self.saveCookies()
             except Exception as error:
                 time.sleep(1)
+                if self.is403():
+                    time.sleep(3*60)
                 browser.find_element_by_id("img_verify").click()
                 print('登陆失败重新登陆')
 
@@ -131,7 +141,8 @@ class TicketGetter:
             pickle.dump(cookies, fw)
 
     def waitForTicket(self):
-        while True:
+        loopFlag = True
+        while loopFlag:
             if browser.current_url == loginUrl:
                 self.login()
 
@@ -141,40 +152,34 @@ class TicketGetter:
 
             if (timeArray.tm_hour >= 10) and (timeArray.tm_hour < 20):
                 browser.get(ticketUrl)
-                try:
-                    browser.find_element_by_class_name('orange').click()
-                    break
-                except Exception:
-                    time.sleep(2)
-                    print("当前无票，正在刷票...")
+                indexes = [3,2,4,5,6,7,1]
+                for index in indexes:
+                    try:
+                        bookBtn = browser.find_element_by_xpath('//*[@id="divSzArea"]/section[{}]/div/div[3]/div/a'.format(index))
+                        submitUrl = host + bookBtn.get_attribute("href")
+                        browser.get(submitUrl)
+                        time.sleep(0.5)
+                        try:
+                            browser.find_element_by_id('TencentCaptcha').click()
+                        except Exception as error:
+                            print(error)
+                        loopFlag = False
+                        break
+                    except Exception as error:
+                        continue
+                    
+                time.sleep(1.5)
+                if self.is403():
+                    time.sleep(3*60)
+                    # print("当前无票，正在刷票...")
             else:
                 print("{} 还未到抢票时间".format(nowTime))
                 time.sleep(0.5)
 
     def notifyAndWait(self):
+        self.save()
         # 预定确认页面验证码自动填写和提交
         try:
-            # browser.get_screenshot_as_file('spider/screenshot.png')
-            # element = browser.find_element_by_id('img_verify')
-            # left = int(element.location['x'])
-            # top = int(element.location['y'])
-            # right = int(element.location['x'] + element.size['width'])
-            # bottom = int(element.location['y'] + element.size['height'])
-            # im = Image.open('spider/screenshot.png')
-            # im = im.crop((left, top, right, bottom))
-            # im.save('spider/code.png')
-            # ocr=ddddocr.DdddOcr()
-            # img=cv2.imread("spider/code.png")
-            # img2 = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-            # img2 = cv2.inRange(img2, lowerb=110, upperb=255)
-            # _,img_bytes=cv2.imencode('.png', img2)
-            # img_bytes=img_bytes.tobytes()
-            # res=ocr.classification(img_bytes)
-            # print(res)
-            # verifyCode1=browser.find_element_by_id('checkCode')
-            # verifyCode1.send_keys(res)
-            # browser.find_element_by_id('btnSubmit').click()
-            # browser.find_element_by_xpath("//span[text()=\"确定\"]").click()
             system = platform.system()
             if system == "Windows":
                 # windows系统通知 pip install win10toast
@@ -188,6 +193,15 @@ class TicketGetter:
             while True:
                 time.sleep(5)
                 print('抢到票了')
+
+    def save(self):
+        with open('download_html', 'wb') as f:
+            time.sleep(2)
+            f.write(browser.page_source.encode('utf-8', 'ignore'))
+    
+    def is403(self):
+        content = browser.page_source
+        return content.__contains__('403')
 
     def run(self):
         hasCookies = self.getCookies()
