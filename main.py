@@ -71,7 +71,7 @@ class TicketGetter:
         # windows系统通知 pip install win10toast
         from win10toast import ToastNotifier
         toaster = ToastNotifier()
-        toaster.show_toast("注意", "抢到票了!!!")
+        toaster.show_toast(title, message)
 
     def loginByMyself(self):
         while browser.current_url == loginUrl:
@@ -94,11 +94,11 @@ class TicketGetter:
 
                 account = browser.find_element_by_id('input_idCardNo')
                 account.clear()
-                account.send_keys('')  # 需要在此输入通行证号码
+                account.send_keys('E05344677')  # 需要在此输入通行证号码
 
                 password = browser.find_element_by_id('input_pwd')
                 password.clear()
-                password.send_keys('')  # 需要在此输入密码
+                password.send_keys('95QmqhCGeCackgRp')  # 需要在此输入密码
 
                 # 自动识别验证码
                 verifyCode = browser.find_element_by_id('input_verifyCode')
@@ -136,8 +136,11 @@ class TicketGetter:
             return False
 
     def saveCookies(self):
+        path = 'cookies.pkl'
+        if os.path.exists(path):
+            os.remove(path)
         cookies = browser.get_cookies()
-        with open('cookies.pkl', 'wb') as fw:
+        with open(path, 'wb') as fw:
             pickle.dump(cookies, fw)
 
     def waitForTicket(self):
@@ -156,8 +159,7 @@ class TicketGetter:
                 for index in indexes:
                     try:
                         bookBtn = browser.find_element_by_xpath('//*[@id="divSzArea"]/section[{}]/div/div[3]/div/a'.format(index))
-                        submitUrl = host + bookBtn.get_attribute("href")
-                        browser.get(submitUrl)
+                        bookBtn.click()
                         time.sleep(0.5)
                         try:
                             browser.find_element_by_id('TencentCaptcha').click()
@@ -189,13 +191,25 @@ class TicketGetter:
                 self.macNotify(title='注意', subtitle='注意', message='抢到票了')
         except Exception as error:
             print(error)
-        finally:
+    
+    def waitForConfirm(self):
             while True:
-                time.sleep(5)
-                print('抢到票了')
+                try:
+                    confirmBtn = browser.find_element_by_id('btn_confirmOrder')
+                    btnClass = confirmBtn.get_attribute('class')
+                    if (btnClass.__contains__('Btn-l-gray')):
+                        time.sleep(0.5)
+                        continue
+                    confirmBtn.click()
+                    break
+                except Exception as error:
+                    time.sleep(0.5)
+                finally:
+                    print("等待确认")
+                    time.sleep(5)
 
     def save(self):
-        with open('download_html', 'wb') as f:
+        with open('download.html', 'wb') as f:
             time.sleep(2)
             f.write(browser.page_source.encode('utf-8', 'ignore'))
     
@@ -220,6 +234,7 @@ class TicketGetter:
         browser.set_script_timeout(200)
         self.waitForTicket()
         self.notifyAndWait()
+        self.waitForConfirm()
 
 
 if __name__ == '__main__':

@@ -2,3 +2,4 @@
 spider/
 chrome-data/
 *.pkl
+*.html
